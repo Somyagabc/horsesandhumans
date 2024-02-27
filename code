@@ -1,0 +1,79 @@
+#import all the necessary libraries to design and develop this model
+
+import os
+import zipfile
+import tensorflow as tf
+from tensorflow.keras import layers, models
+import tensorflow_datasets as tfds
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+import numpy as np
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D , Dense , Flatten , MaxPooling2D
+
+#load and split the data into training and validation data
+train_dataset,info = tfds.load('horses_or_humans', with_info = True, split = 'train', as_supervised=True)
+val_dataset,val_info = tfds.load("horses_or_humans", with_info=True, split = 'test', as_supervised=True)
+
+#check the total length of each data
+print(len(train_dataset))
+print(len(val_dataset))
+    1027
+    256
+
+#Resizing the images into standard size
+target_size = (64, 64)  # Specify the desired height and width
+
+# Function to resize images
+def resize_images(features, label):
+    resized_image = tf.image.resize(features, target_size)
+    return resized_image, label
+
+# Apply the resize function to the dataset
+train_dataset = train_dataset.map(resize_images)
+
+train_dataset = train_dataset.shuffle(100).batch(10)
+val_dataset = val_dataset.batch(10)
+
+features = []
+labels = []
+
+for batch in train_dataset:
+    image, label = batch
+    features.append(image.numpy())
+    labels.append(label.numpy())
+
+# Concatenate the lists or arrays
+features = np.concatenate(features, axis=0)
+labels = np.concatenate(labels, axis=0)
+
+xtrain,xtest,ytrain,ytest = train_test_split(features, labels, test_size=0.2)
+model = Sequential()
+
+#CNN Input Layer
+model.add(Conv2D(32 , (3,3) , activation="relu" , input_shape = (64,64,3)))
+model.add(MaxPooling2D(2,2))
+
+#1 CNN block
+model.add(Conv2D(64 , (3,3) , activation = "relu"))
+model.add(MaxPooling2D(2,2))
+
+#2 CNN block
+model.add(Conv2D(128 , (3,3) , activation = "relu"))
+model.add(MaxPooling2D(2,2))
+
+#Flatten Layer
+model.add(Flatten())
+# ANN Layer
+model.add(Dense(64 , activation = "relu"))
+# ANN output layer
+model.add(Dense(1 , activation = "sigmoid"))
+# compile
+model.compile(optimizer = "adam" , loss = "binary_crossentropy" , metrics = ["accuracy"])
+#run
+model.fit(xtrain, ytrain, epochs = 2 , batch_size= 32 , validation_data=(xtest,ytest))
+
+loss , accuracy = model.evaluate(xtest,ytest)
+print(loss , accuracy)
+        7/7 [==============================] - 1s 71ms/step - loss: 0.1688 - accuracy: 0.9223
+        0.1688072234392166 0.9223300814628601
